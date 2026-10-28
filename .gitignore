@@ -13,3 +13,10 @@
 .externalNativeBuild
 .cxx
 local.properties
+# 签名配置与密钥，不要提交
+keystore.properties
+*.jks
+*.keystore
+# 脚本日志
+run.log
+run.err
