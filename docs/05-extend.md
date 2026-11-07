@@ -24,7 +24,7 @@ val ALL = listOf(CHECK_IN, HOBBIT)
 
 - 数据类放 `data/model/`
 - 仓储放 `data/repo/XxxRepository(backend, boxId)`，路径用 `StoragePaths.boxFile(boxId, name)`，即仓库根下的 `hobbit/…`
-- 参照 `CheckInRepository`：小文件一个 JSON，按时间累积的数据按月拆分
+- 参照 `CheckInRepository`：小文件一个 JSON；按时间累积的数据怎么拆由该 Box 自己决定（打卡、打点目前都按月拆文件，框架不强制）
 
 ## 3. 接入 ViewModel
 

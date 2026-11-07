@@ -98,8 +98,8 @@ keytool -genkey -v -keystore gitbox.jks -keyalg RSA -keysize 2048 -validity 1000
 
 | 构建 | 路径 |
 | --- | --- |
-| debug | `app/build/outputs/apk/debug/app-debug.apk` |
-| release | `app/build/outputs/apk/release/app-release.apk` |
+| debug | `app/build/outputs/apk/debug/GitBox.0.0.1.debug.apk` |
+| release | `app/build/outputs/apk/release/GitBox.0.0.1.release.apk` |
 
 ## 6. 常用 Gradle 命令
 
