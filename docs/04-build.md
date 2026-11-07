@@ -96,10 +96,14 @@ keytool -genkey -v -keystore gitbox.jks -keyalg RSA -keysize 2048 -validity 1000
 
 ## 5. 产物路径
 
+每次 assemble 完成后，APK 会自动复制到仓库最外层的 `build/`（已在 `.gitignore` 中忽略）。
+
 | 构建 | 路径 |
 | --- | --- |
-| debug | `app/build/outputs/apk/debug/GitBox.0.0.1.debug.apk` |
-| release | `app/build/outputs/apk/release/GitBox.0.0.1.release.apk` |
+| debug | `build/GitBox.<版本>.debug.apk` |
+| release | `build/GitBox.<版本>.release.apk` |
+
+Gradle 原始输出仍在 `app/build/outputs/apk/<debug|release>/`，`scripts/run.ps1` 从那里取包安装。文件名里的版本号来自 `gradle.properties`。
 
 ## 6. 常用 Gradle 命令
 
@@ -117,3 +121,6 @@ keytool -genkey -v -keystore gitbox.jks -keyalg RSA -keysize 2048 -validity 1000
 - **配置缓存**：`org.gradle.configuration-cache=true` 已开启。自定义任务里不要在 `doLast` 引用脚本级函数/属性，否则会报 “cannot serialize Gradle script object references”
 - **minSdk 35**：只能在 Android 15+ 设备上安装；模拟器镜像请选择 API 35 及以上
 - **仓库依赖**：首次构建需要从 Google / Maven Central 下载 Compose、JGit 等依赖，请保持网络可用
+- **不要配置 `optimization.packageScope`**：这是给「尚未使用 R8 的应用」做渐进迁移的实验功能，只优化指定包、其余代码原样保留。配了它要么因第三方库被重打包而启动闪退（`androidx.startup` 抛 `IllegalAccessError`），要么因依赖库完全不裁剪让 APK 从约 3MB 涨到 43MB。直接用全量 `optimization { enable = true }`，反射相关的问题靠 keep 规则解决
+- **Gson 与混淆**：`app/proguard-rules.pro` keep 了 `data.model.**` 和 `data.repo.**`。Gson 按字段名反射读写 JSON，字段名被混淆后 release 读不出已有数据，写进仓库的 JSON 也会变成 `a` / `b` 这种键名；`data.repo` 里的 `ItemsFile` / `RecordsFile` 包装类尤其容易漏掉
+- **JGit 的缺失类**：全量 R8 会对 JGit 5.13 引用的 `java.lang.management` / `javax.management` / `org.ietf.jgss` / slf4j 类报 Missing classes（Android 平台没有），已在 `proguard-rules.pro` 里 `-dontwarn` 掉；本项目只用 HTTP(S)+Token，不走这些路径

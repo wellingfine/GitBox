@@ -30,7 +30,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\stop.ps1
 ./gradlew bumpVersion            # 版本号 patch +1、versionCode +1
 ```
 
-产物：`app/build/outputs/apk/debug/GitBox.0.0.1.debug.apk`、`app/build/outputs/apk/release/GitBox.0.0.1.release.apk`（版本号随 `gradle.properties` 变化）
+产物：每次构建都会复制到仓库最外层的 `build/` —— `build/GitBox.<版本>.debug.apk`、`build/GitBox.<版本>.release.apk`（版本号来自 `gradle.properties`）；Gradle 原始输出仍在 `app/build/outputs/apk/` 下。
 
 ## 使用方式
 

@@ -46,10 +46,13 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
-            optimization {
-                enable = true
-                packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
-            }
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            // 全量 R8 优化。不要配 packageScope：那是给「尚未使用 R8 的应用」做渐进迁移
+            // 的实验配置，会让依赖库不被裁剪（APK 暴涨）并可能破坏第三方库的访问可见性
+            optimization { enable = true }
         }
     }
     compileOptions {
@@ -113,4 +116,30 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+}
+
+/**
+ * 构建完把 APK 复制到仓库最外层的 build/（.gitignore 已忽略 /build）。
+ * 用 finalizer 挂在 assemble 上，简写命令、长命令、脚本构建都会带上这一步；
+ * 路径在配置阶段取好，doLast 里只引用局部变量，保持配置缓存兼容。
+ */
+listOf("Debug", "Release").forEach { suffix ->
+    val copyTask = tasks.register("copy${suffix}ApkToRoot") {
+        val targetDir = rootProject.layout.projectDirectory.dir("build").asFile
+        val apkDir = layout.buildDirectory.dir("outputs/apk/${suffix.lowercase()}").get().asFile
+        group = "build"
+        description = "把 $suffix APK 复制到仓库最外层的 build/"
+        doLast {
+            val apk = apkDir.listFiles { file -> file.isFile && file.name.endsWith(".apk") }
+                ?.maxByOrNull { it.lastModified() }
+            if (apk == null) {
+                logger.warn("没有找到 APK：$apkDir")
+                return@doLast
+            }
+            targetDir.mkdirs()
+            apk.copyTo(targetDir.resolve(apk.name), overwrite = true)
+            println("APK -> build/${apk.name}")
+        }
+    }
+    tasks.matching { it.name == "assemble$suffix" }.configureEach { finalizedBy(copyTask) }
 }

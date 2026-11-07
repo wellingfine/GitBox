@@ -1,5 +1,7 @@
 *.iml
 .gradle
+# Kotlin 编译器 daemon 的会话/缓存文件
+.kotlin/
 /local.properties
 /.idea/caches
 /.idea/libraries
