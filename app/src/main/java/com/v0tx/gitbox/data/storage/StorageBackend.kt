@@ -27,6 +27,9 @@ interface StorageBackend {
     /** 把本地未推送的提交推送上去 */
     suspend fun pushPending(): SyncResult
 
+    /** 把攒在本地的改动一次性提交并推送（配置页「保存配置」） */
+    suspend fun commitAll(message: String): SyncResult
+
     suspend fun deleteFile(path: String): SyncResult
 }
 

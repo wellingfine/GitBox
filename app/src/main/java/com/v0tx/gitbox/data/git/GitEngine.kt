@@ -55,14 +55,29 @@ class GitEngine(private val dir: File, private val cfg: StorageConfig) {
         }
     }
 
-    /** 从远端拉取最新内容 */
+    /**
+     * 从远端拉取最新内容。
+     * 本地只要还有未提交的改动就只 fetch、不合并，避免覆盖本机配置与数据。
+     */
     fun pull(): SyncResult {
         if (cfg.gitUrl.isBlank()) return SyncResult(true, "本地仓库无需拉取")
         return try {
             val git = open()
             val repo = git.repository
             val branch = repo.branch ?: cfg.branch
-            if (repo.resolve("HEAD") == null) {
+            val hasHead = repo.resolve("HEAD") != null
+            val dirty = if (hasHead) {
+                runCatching { !git.status().call().isClean }.getOrDefault(true)
+            } else {
+                dir.listFiles()?.any { it.name != ".git" } ?: false
+            }
+            if (dirty) {
+                runCatching {
+                    git.fetch().setRemote("origin").setCredentialsProvider(credentials()).call()
+                }
+                return SyncResult(true, "本地有未提交改动，已跳过拉取（本地配置未覆盖）")
+            }
+            if (!hasHead) {
                 git.fetch().setRemote("origin").setCredentialsProvider(credentials()).call()
                 val candidates = listOf(branch, "main", "master").distinct()
                 val remote = candidates.firstOrNull { repo.resolve("refs/remotes/origin/$it") != null }

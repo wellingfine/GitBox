@@ -47,6 +47,9 @@ class LocalBackend(private val rootDir: File) : StorageBackend {
 
     override suspend fun pushPending(): SyncResult = SyncResult(true, "本地存储无需同步")
 
+    override suspend fun commitAll(message: String): SyncResult =
+        SyncResult(true, "本机目录无需提交")
+
     override suspend fun deleteFile(path: String): SyncResult = withContext(Dispatchers.IO) {
         val file = resolve(path)
         val ok = !file.exists() || file.delete()

@@ -21,8 +21,16 @@ object BuiltInBoxes {
         description = "每天点一下，记录习惯与坚持"
     )
 
+    val KEY_MARK = BoxDef(
+        id = "keymark",
+        name = "打点",
+        icon = "timer",
+        colorHex = "#FF9800",
+        description = "按一下记下当前时间，可随时插入分隔线"
+    )
+
     /** 所有内置 Box，新增功能时往这里加 */
-    val ALL: List<BoxDef> = listOf(CHECK_IN)
+    val ALL: List<BoxDef> = listOf(CHECK_IN, KEY_MARK)
 
     val DEFAULT_ID: String = CHECK_IN.id
 
@@ -85,11 +93,15 @@ data class StorageConfig(
         get() = gitUrl.isNotBlank()
 }
 
-/** 本机保存的内容：存储设置 + 当前 Box */
+/** 本机保存的内容：存储设置 + 当前 Box + 打点页的常亮开关 */
 data class LocalSettings(
     val storage: StorageConfig = StorageConfig(),
-    val currentBoxId: String = BuiltInBoxes.DEFAULT_ID
-)
+    val currentBoxId: String = BuiltInBoxes.DEFAULT_ID,
+    /** null = 老版本没存过，按开启处理，避免 Gson 缺省把开关置为关闭 */
+    val keepScreenOn: Boolean? = null
+) {
+    val screenOn: Boolean get() = keepScreenOn != false
+}
 
 /** 打卡事项 */
 data class CheckInItem(
@@ -109,6 +121,20 @@ data class CheckInRecord(
     val timestamp: Long = 0L,
     val note: String = ""
 )
+
+/** 一条打点记录：时间点或分隔线，timestamp 为毫秒 */
+data class KeyMark(
+    val id: String = "",
+    val timestamp: Long = 0L,
+    val kind: String = KIND_MARK
+) {
+    val isSeparator: Boolean get() = kind == KIND_SEPARATOR
+
+    companion object {
+        const val KIND_MARK = "mark"
+        const val KIND_SEPARATOR = "separator"
+    }
+}
 
 /** 同步状态 */
 enum class SyncStatus { IDLE, WORKING, OK, ERROR }

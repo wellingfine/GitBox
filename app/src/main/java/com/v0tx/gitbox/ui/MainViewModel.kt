@@ -9,6 +9,7 @@ import com.v0tx.gitbox.data.model.BoxUi
 import com.v0tx.gitbox.data.model.BuiltInBoxes
 import com.v0tx.gitbox.data.model.CheckInItem
 import com.v0tx.gitbox.data.model.CheckInRecord
+import com.v0tx.gitbox.data.model.KeyMark
 import com.v0tx.gitbox.data.model.LocalSettings
 import com.v0tx.gitbox.data.model.StorageConfig
 import com.v0tx.gitbox.data.model.SyncResult
@@ -16,6 +17,7 @@ import com.v0tx.gitbox.data.model.SyncState
 import com.v0tx.gitbox.data.model.SyncStatus
 import com.v0tx.gitbox.data.model.with
 import com.v0tx.gitbox.data.repo.CheckInRepository
+import com.v0tx.gitbox.data.repo.KeyMarkRepository
 import com.v0tx.gitbox.data.repo.StorageRepository
 import com.v0tx.gitbox.data.storage.StorageBackend
 import com.v0tx.gitbox.util.monthKey
@@ -39,13 +41,19 @@ data class CheckInState(
     val loading: Boolean = false
 )
 
+data class KeyMarkState(
+    val records: List<KeyMark> = emptyList(),
+    val loading: Boolean = false
+)
+
 data class UiState(
     val ready: Boolean = false,
     val settings: LocalSettings = LocalSettings(),
     val config: AppConfig = AppConfig(),
     val currentBoxId: String = BuiltInBoxes.DEFAULT_ID,
     val sync: SyncState = SyncState(),
-    val checkIn: CheckInState = CheckInState()
+    val checkIn: CheckInState = CheckInState(),
+    val keyMark: KeyMarkState = KeyMarkState()
 ) {
     /** Box 由代码定义，这里合并用户在 git 配置里保存的显示设置 */
     val boxes: List<BoxUi>
@@ -61,6 +69,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = StorageRepository(app)
     private var backend: StorageBackend? = null
     private var checkInRepo: CheckInRepository? = null
+    private var keyMarkRepo: KeyMarkRepository? = null
+    private var lastMarkRejectTipAt = 0L
 
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
@@ -79,6 +89,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val storage = repo.backendFor(settings.storage)
         backend = storage
         checkInRepo = CheckInRepository(storage, BuiltInBoxes.CHECK_IN.id)
+        keyMarkRepo = KeyMarkRepository(storage, BuiltInBoxes.KEY_MARK.id)
         _state.update {
             it.copy(settings = settings, currentBoxId = settings.currentBoxId, ready = true)
         }
@@ -98,6 +109,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun loadBoxDataInternal(boxId: String) {
         when (boxId) {
             BuiltInBoxes.CHECK_IN.id -> loadCheckInInternal()
+            BuiltInBoxes.KEY_MARK.id -> loadKeyMarkInternal()
         }
     }
 
@@ -141,6 +153,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             repo.saveSettings(settings)
             backend = withContext(Dispatchers.IO) { repo.backendFor(cfg) }
             checkInRepo = CheckInRepository(backend!!, BuiltInBoxes.CHECK_IN.id)
+            keyMarkRepo = KeyMarkRepository(backend!!, BuiltInBoxes.KEY_MARK.id)
             _state.update {
                 it.copy(settings = settings, sync = SyncState(SyncStatus.WORKING, "连接中…"))
             }
@@ -191,11 +204,30 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** 配置页「保存配置」：把攒在本地的改动一次性提交并推送 */
+    fun saveConfigNow() {
+        viewModelScope.launch {
+            _state.update { it.copy(sync = SyncState(SyncStatus.WORKING, "提交中…")) }
+            val result = withContext(Dispatchers.IO) { currentBackend().commitAll("保存 GitBox 配置") }
+            _state.update {
+                it.copy(
+                    sync = SyncState(
+                        status = if (result.ok) SyncStatus.OK else SyncStatus.ERROR,
+                        message = result.message,
+                        lastSyncAt = System.currentTimeMillis()
+                    )
+                )
+            }
+            _events.tryEmit(result.message)
+        }
+    }
+
     fun resetLocalRepo() {
         viewModelScope.launch {
             withContext(Dispatchers.IO) { repo.resetLocal() }
             backend = null
             checkInRepo = null
+            keyMarkRepo = null
             _events.tryEmit("本地仓库已重置，重新拉取中")
             bootstrap()
         }
@@ -308,6 +340,69 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _state.update { it.copy(checkIn = it.checkIn.copy(items = items)) }
         val result = withContext(Dispatchers.IO) { cr.saveItems(items, message) }
         if (!result.ok) _events.tryEmit("保存失败：${result.message}")
+    }
+
+    // ---------- 打点（keymark Box） ----------
+
+    /** 屏幕常亮开关，只存本机，切页面时由界面负责清除 flag */
+    fun setKeepScreenOn(enabled: Boolean) {
+        viewModelScope.launch {
+            val settings = repo.loadSettings().copy(keepScreenOn = enabled)
+            repo.saveSettings(settings)
+            _state.update { it.copy(settings = settings) }
+        }
+    }
+
+    private suspend fun loadKeyMarkInternal() {
+        _state.update { it.copy(keyMark = it.keyMark.copy(loading = true)) }
+        val records = withContext(Dispatchers.IO) {
+            val kr = keyMarkRepo ?: return@withContext emptyList<KeyMark>()
+            kr.load(recentMonthKeys(13) + kr.existingMonths())
+        }
+        _state.update {
+            it.copy(keyMark = KeyMarkState(records = records.sortedByDescending { it.timestamp }))
+        }
+    }
+
+    /** 按一下记下当前时间；两次打点至少隔 1 秒，分隔线不受限 */
+    fun addKeyMark(kind: String = KeyMark.KIND_MARK) {
+        viewModelScope.launch {
+            val kr = keyMarkRepo ?: return@launch
+            val now = System.currentTimeMillis()
+            if (kind == KeyMark.KIND_MARK) {
+                val last = _state.value.keyMark.records
+                    .firstOrNull { !it.isSeparator }?.timestamp ?: 0L
+                val elapsed = now - last
+                if (elapsed in 0 until 1000L) {
+                    if (now - lastMarkRejectTipAt >= 1000L) {
+                        lastMarkRejectTipAt = now
+                        _events.tryEmit("两次打点至少间隔 1 秒")
+                    }
+                    return@launch
+                }
+            }
+            val record = KeyMark(
+                id = UUID.randomUUID().toString(),
+                timestamp = now,
+                kind = kind
+            )
+            val records = (_state.value.keyMark.records + record).sortedByDescending { it.timestamp }
+            _state.update { it.copy(keyMark = it.keyMark.copy(records = records)) }
+            val result = withContext(Dispatchers.IO) { kr.add(record) }
+            if (!result.ok) _events.tryEmit("已记录，但同步失败：${result.message}")
+        }
+    }
+
+    /** 直接删除，不做二次确认 */
+    fun deleteKeyMark(recordId: String) {
+        viewModelScope.launch {
+            val kr = keyMarkRepo ?: return@launch
+            val target = _state.value.keyMark.records.firstOrNull { it.id == recordId } ?: return@launch
+            val records = _state.value.keyMark.records.filter { it.id != recordId }
+            _state.update { it.copy(keyMark = it.keyMark.copy(records = records)) }
+            val result = withContext(Dispatchers.IO) { kr.delete(target) }
+            if (!result.ok) _events.tryEmit("删除失败：${result.message}")
+        }
     }
 
     companion object {

@@ -104,8 +104,8 @@ keytool -genkey -v -keystore gitbox.jks -keyalg RSA -keysize 2048 -validity 1000
 ## 6. 常用 Gradle 命令
 
 ```bash
-./gradlew :app:assembleDebug      # 编译 debug 包
-./gradlew :app:assembleRelease    # 编译 release 包（不会自增版本号）
+./gradlew debug                   # 编译 debug 包
+./gradlew release                 # 编译 release 包（不会自增版本号）
 ./gradlew bumpVersion             # 版本号 +1
 ./gradlew :app:installDebug       # 编译并安装（需要已连接设备）
 ./gradlew :app:lint               # 静态检查

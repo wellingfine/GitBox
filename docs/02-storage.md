@@ -47,21 +47,22 @@ SharedPreferences（`gitbox_local`）里的 `LocalSettings`：
 
 `BoxSetting` 的字段为空时使用代码里 `BoxDef` 的默认值。
 
-## 保存即推送
+## 只存本地，手动提交
 
-`GitBackend.writeFiles()` 的流程：
+`GitBackend.writeFiles()` / `deleteFile()` 只写工作副本，**不会自动 commit/push**（返回「待提交」）。
+所有改动攒在本地，配置页点「保存配置」时调用 `StorageBackend.commitAll()`：
 
-1. 写文件到工作副本
-2. `git add -A` → `commit`
-3. `push`
-4. push 失败时先 `pull` 再 `pushPending()` 重试一次；仍失败返回 `SyncResult(ok=false)`，数据留在本地仓库不丢
+1. `git add -A` → `commit`（一次提交包含全部 Box 数据与配置）
+2. `push`
+3. push 失败时先 `pull` 再 `pushPending()` 重试一次；仍失败返回 `SyncResult(ok=false)`，提交留在本地不丢
 
 同步状态是**全局唯一**的（`UiState.sync`），在配置页和第一个 Tab 的顶栏都能看到。
 
 ## 拉取与冲突
 
-- 启动时、保存存储设置后、手动点同步都会 `pull`
-- 本地是空仓库（unborn HEAD）时先 `fetch`，再 checkout `origin/main|master|<branch>`
+- 启动时、保存存储设置后、手动点同步都会尝试 `pull`
+- **本地有未提交改动时只 `fetch`、不合并**，避免远端覆盖本机配置与数据
+- 本地是空仓库（unborn HEAD）且没有本地文件时先 `fetch`，再 checkout `origin/main|master|<branch>`
 - 冲突时报「同步失败」，可用配置页「重置本地」删掉本机副本重新拉取
 
 ## 认证

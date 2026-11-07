@@ -108,6 +108,18 @@ fun SettingsScreen(state: UiState, vm: MainViewModel) {
                         OutlinedButton(onClick = { vm.pushNow() }) { Text("推送") }
                         OutlinedButton(onClick = { showReset = true }) { Text("重置本地") }
                     }
+                    Button(
+                        onClick = { vm.saveConfigNow() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                    ) { Text("保存配置") }
+                    Text(
+                        text = "改动只保存在本机，点「保存配置」才一次性提交并推送；启动时会自动尝试拉取，本地未提交的改动不会被覆盖。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
                 }
             }
         }

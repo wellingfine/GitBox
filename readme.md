@@ -2,7 +2,7 @@
 
 用 **git 仓库当云存储**的小 App 集合。**Box 就是一个内置的小 App 功能**（当前有「打卡」，新功能由代码添加，用户不能增删）；所有 Box 共用一份存储：一个 git 仓库（保存即推送）或本机目录，每个 Box 在仓库里拥有自己的目录。
 
-- 存储：全局一份 git 地址 + Token（私有仓库填写）；保存时自动 commit + push；不填地址则存本机
+- 存储：全局一份 git 地址 + Token（私有仓库填写）；改动只存本地，配置页点「保存配置」才 commit + push；不填地址则存本机
 - 界面：3 个 Tab（仅图标）—— 当前 Box 功能页、Box 列表（切换/改外观）、配置
 - 内置 48 个图标、12 种颜色，可供 Box 外观与打卡事项选择
 - 配置页最后一行显示版本：`make by v0tx [v0.0.1]`
@@ -25,8 +25,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\stop.ps1
 常用 Gradle 命令：
 
 ```bash
-./gradlew :app:assembleDebug     # 编译 debug 包
-./gradlew :app:assembleRelease   # 编译 release 包（不自增版本）
+./gradlew debug     # 编译 debug 包
+./gradlew release   # 编译 release 包（不自增版本）
 ./gradlew bumpVersion            # 版本号 patch +1、versionCode +1
 ```
 
@@ -38,7 +38,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\stop.ps1
 2. 到配置页填一次存储：git 地址（如 `https://github.com/name/repo.git`）与 Token
    - 不填 git 地址 → 数据保存在 `filesDir/gitbox/local`
    - 私有仓库 → 必须填 Token（GitHub 用 PAT，用户名填 `git` 或自己的用户名）
-3. 保存后自动 clone/commit/push；之后每次改动都会直接推送
+3. 保存存储设置后会尝试拉取；日常改动只落本地，到配置页点「保存配置」一次性提交并推送
 4. 打卡：新建事项 → 每天点圆形按钮打卡（再点撤销）→ 主页看最近 5 天 → 右上角看记录墙
 5. Box 列表里可以切换 Box、修改它的显示名/图标/颜色；Box 本身由代码添加
 

@@ -13,6 +13,7 @@ import com.v0tx.gitbox.data.model.BuiltInBoxes
 import com.v0tx.gitbox.ui.MainViewModel
 import com.v0tx.gitbox.ui.UiState
 import com.v0tx.gitbox.ui.checkin.CheckInHomeScreen
+import com.v0tx.gitbox.ui.keymark.KeyMarkHomeScreen
 import java.time.LocalDate
 
 /**
@@ -33,6 +34,8 @@ fun BoxHomeScreen(
             onOpenWall = onOpenWall,
             onOpenDay = onOpenDay
         )
+
+        BuiltInBoxes.KEY_MARK.id -> KeyMarkHomeScreen(state = state, vm = vm)
 
         else -> NotImplementedBox(state)
     }

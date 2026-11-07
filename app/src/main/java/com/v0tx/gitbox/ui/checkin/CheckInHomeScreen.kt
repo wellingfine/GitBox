@@ -17,12 +17,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,7 +40,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.v0tx.gitbox.data.model.CheckInItem
 import com.v0tx.gitbox.data.model.CheckInRecord
-import com.v0tx.gitbox.data.model.SyncStatus
 import com.v0tx.gitbox.ui.MainViewModel
 import com.v0tx.gitbox.ui.UiState
 import com.v0tx.gitbox.ui.components.AppIconView
@@ -84,13 +81,6 @@ fun CheckInHomeScreen(
                 AppTopBar(
                     title = state.currentBox.name,
                     actions = {
-                        IconButton(onClick = { vm.syncNow() }) {
-                            if (state.sync.status == SyncStatus.WORKING) {
-                                CircularProgressIndicator()
-                            } else {
-                                Icon(Icons.Filled.Refresh, contentDescription = "同步")
-                            }
-                        }
                         IconButton(onClick = onOpenWall) {
                             Icon(Icons.Filled.GridView, contentDescription = "记录墙")
                         }

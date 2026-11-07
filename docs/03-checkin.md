@@ -56,4 +56,4 @@ while (cursor in days) { count++; cursor = cursor.minusDays(1) }
 
 ## 保存时机
 
-每次新建/编辑/删除事项、打卡、撤销、删除记录都会写入对应文件，然后由 `StorageBackend` 立即 commit + push。失败时 Snackbar 提示，数据留在本地仓库，可用配置页「推送」补交。
+每次新建/编辑/删除事项、打卡、撤销、删除记录都只写入本地工作副本，不会自动提交。到配置页点「保存配置」一次性 commit + push；失败时 Snackbar 提示，改动留在本地仓库不丢。

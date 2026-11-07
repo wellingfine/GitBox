@@ -34,3 +34,16 @@ tasks.register("bumpVersion") {
         println("version: $currentName ($currentCode) -> $nextName ($nextCode)")
     }
 }
+
+/** 简写命令：.\gradlew.bat debug / release，等价于 :app:assembleDebug / :app:assembleRelease */
+tasks.register("debug") {
+    group = "build"
+    description = "编译 debug 包"
+    dependsOn(":app:assembleDebug")
+}
+
+tasks.register("release") {
+    group = "build"
+    description = "编译 release 包（不自增版本）"
+    dependsOn(":app:assembleRelease")
+}
